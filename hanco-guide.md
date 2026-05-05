@@ -57,8 +57,6 @@
 ### 설치
 
 저장소를 클론한 뒤 `pip`로 설치합니다. 설치하면 `hanco` 명령어를 어디서든 사용할 수 있습니다.
-
-=======
  
 ## 2. 설치 및 시작
  
@@ -74,11 +72,9 @@ git clone https://github.com/nslookup255-pixel/-Hanco-
 cd -Hanco-
 pip install .
 ```
-<<<<<<< HEAD
 
 ### CLI 명령어
 
-=======
  
 ### CLI 명령어
  
@@ -93,7 +89,6 @@ hanco <파일>.hanco    # 파일 직접 실행 (단축 형태)
 
 확장자 `.hanco`로 파일을 만들고 실행합니다.
 
-=======
  
 ### 파일 실행
  
@@ -105,18 +100,6 @@ hanco run hello.hanco
 # 또는
 hanco hello.hanco
 ```
-
-### REPL (대화형 모드)
-
-```bash
-hanco repl
-```
-
-```
-한코 REPL v0.1.0
-종료하려면 exit 입력
-
-=======
  
 ### REPL (대화형 모드)
  
