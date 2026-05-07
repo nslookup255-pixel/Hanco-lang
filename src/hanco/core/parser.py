@@ -152,6 +152,16 @@ class Parser:
             self.skip_newlines()
         self.eat(">")
         return body
+    
+    def parse_if_block(self):
+        self.eat("<")
+        body = []
+        self.skip_newlines()
+        while self.cur() and self.cur().value != ">" and self.cur().value != "아니면":
+            body.append(self.stmt())
+            self.skip_newlines()
+        self.eat(">")
+        return body
 
     def loop_stmt(self):
         self.eat("반복")
