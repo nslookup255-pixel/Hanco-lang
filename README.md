@@ -1,3 +1,18 @@
+<div align="center">
+
+# 🇰🇷 한코 · Hanco
+
+> 한국어로 코딩하는 프로그래밍 언어
+
+[![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](https://github.com/nslookup255-pixel/Hanco-lang/blob/main/LICENSE)
+[![Version](https://img.shields.io/badge/version-v0.8-blue?style=flat-square)](https://github.com/nslookup255-pixel/Hanco-lang/releases/tag/v0.8)
+[![Language](https://img.shields.io/badge/language-Korean-purple?style=flat-square)](https://github.com/nslookup255-pixel/Hanco-lang)
+[![Python](https://img.shields.io/badge/python-3.x-yellow?style=flat-square)](https://www.python.org)
+
+</div>
+
+---
+
 # 한코 (Hanco)
 
 > 한국어로 코딩하는 프로그래밍 언어, 한코 (Hanco)

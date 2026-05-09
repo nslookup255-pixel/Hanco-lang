@@ -296,13 +296,13 @@ class Parser:
                 cond = self.expr()
                 self.eat("]")
 
-                body = self.parse_block()
+                body = self.parse_if_block()
 
                 branches.append((cond, body))
 
             # 👉 else
             else:
-                else_branch = self.parse_block()
+                else_branch = self.parse_if_block()
                 break
 
         return If(branches, else_branch)
