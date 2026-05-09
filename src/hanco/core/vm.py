@@ -28,6 +28,9 @@ TYPE_FLOAT = "실수"
 TYPE_BOOL = "참거짓"
 TYPE_LIST = "목록"
 TYPE_ANY = "자유"
+TYPE_ALIASES = {
+    "문자": TYPE_STRING,
+}
 
 BUILTIN_PRINT = "출력"
 BUILTIN_INPUT = "입력"
@@ -44,6 +47,12 @@ METHOD_REMOVE = "제거"
 METHOD_CONTAINS = "포함"
 METHOD_STRIP = "제거앞뒤공백"
 METHOD_SPLIT = "나누기"
+LIST_METHOD_ALIASES = {
+    "삭제": METHOD_REMOVE,
+}
+STRING_METHOD_ALIASES = {
+    "제거": METHOD_STRIP,
+}
 
 BOOL_TRUE = "참"
 BOOL_FALSE = "거짓"
@@ -447,10 +456,11 @@ class VM:
                 raise Exception("정수인가 함수는 인자를 1개만 받습니다.")
             return isinstance(args[0], int) and not isinstance(args[0], bool)
 
-        if name in {TYPE_STRING, TYPE_INT, TYPE_FLOAT, TYPE_BOOL}:
+        target_type = TYPE_ALIASES.get(name, name)
+        if target_type in {TYPE_STRING, TYPE_INT, TYPE_FLOAT, TYPE_BOOL}:
             if len(args) != 1:
                 raise Exception(f"자료형 변환 함수 '{name}'는 인자를 1개만 받습니다.")
-            return self.convert_value(name, args[0])
+            return self.convert_value(target_type, args[0])
 
         if name not in self.functions:
             raise Exception(f"정의하지 않은 함수 '{name}' 입니다.")
@@ -488,6 +498,8 @@ class VM:
             raise Exception("자르기 함수는 문자열 또는 목록에만 사용할 수 있습니다.")
 
         if isinstance(target, list):
+            method = LIST_METHOD_ALIASES.get(method, method)
+
             if method == METHOD_APPEND:
                 if len(args) != 1:
                     raise Exception("목록 추가 함수는 인자를 1개만 받습니다.")
@@ -511,6 +523,8 @@ class VM:
             raise Exception(f"지원하지 않는 목록 함수입니다. ({method})")
 
         if isinstance(target, str):
+            method = STRING_METHOD_ALIASES.get(method, method)
+
             if method == METHOD_CONTAINS:
                 if len(args) != 1:
                     raise Exception("문자열 포함 함수는 인자를 1개만 받습니다.")

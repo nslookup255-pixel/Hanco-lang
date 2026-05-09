@@ -11,6 +11,16 @@ try:
 except PackageNotFoundError:
     ver = "dev"
 
+
+def configure_stdio():
+    for stream_name in ("stdout", "stderr"):
+        stream = getattr(sys, stream_name, None)
+        if stream and hasattr(stream, "reconfigure"):
+            try:
+                stream.reconfigure(encoding="utf-8")
+            except Exception:
+                pass
+
 def run_file(path):
     try:
         with open(path, "r", encoding="utf-8") as f:
@@ -49,6 +59,7 @@ def repl():
 
 
 def main():
+    configure_stdio()
     args = sys.argv
 
     if len(args) == 1:

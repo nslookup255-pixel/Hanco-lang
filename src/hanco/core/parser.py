@@ -160,7 +160,8 @@ class Parser:
         while self.cur() and self.cur().value != ">" and self.cur().value != "아니면":
             body.append(self.stmt())
             self.skip_newlines()
-        self.eat(">")
+        if self.cur() and self.cur().value == ">":
+            self.eat(">")
         return body
 
     def loop_stmt(self):
@@ -198,7 +199,7 @@ class Parser:
         name=self.eat().value
         self.eat("=")
 
-        if type_name=="목록":
+        if type_name=="목록" and self.cur().value=="(":
             self.eat("(")
             items=[]
             if self.cur().value!=")":
@@ -282,9 +283,11 @@ class Parser:
         cond = self.expr()
         self.eat("]")
 
-        body = self.parse_block()
+        body = self.parse_if_block()
 
         branches.append((cond, body))
+
+        self.skip_newlines()
 
         # 🔥 아니면 체인
         while self.cur() and self.cur().value == "아니면":
@@ -299,6 +302,7 @@ class Parser:
                 body = self.parse_if_block()
 
                 branches.append((cond, body))
+                self.skip_newlines()
 
             # 👉 else
             else:
