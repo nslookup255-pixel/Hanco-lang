@@ -16,10 +16,12 @@ from .ast_nodes import (
     MethodCall,
     Program,
     Return,
+    Use,
     Var,
     VarDecl,
     WhileLoop,
 )
+from ..std import STDLIB as STANDARD_LIBRARIES
 
 
 TYPE_STRING = "문자열"
@@ -73,6 +75,12 @@ class ContinueSignal(Exception):
     pass
 
 
+class StdNamespace:
+    def __init__(self, name, handler):
+        self.name = name
+        self.handler = handler
+
+
 class VM:
     def __init__(self):
         self.output_handler = print
@@ -107,6 +115,17 @@ class VM:
 
     def type_label_of(self, value):
         return self.type_name_of(value) or "없음"
+
+    def is_hanco_value(self, value):
+        if value is None:
+            return True
+        if isinstance(value, bool):
+            return True
+        if isinstance(value, (int, float, str)):
+            return True
+        if isinstance(value, list):
+            return all(self.is_hanco_value(item) for item in value)
+        return False
 
     def ensure_type(self, expected_type, value, var_name):
         if expected_type == TYPE_ANY:
@@ -252,6 +271,15 @@ class VM:
         self.current_var_types()[name] = type_name
         return value
 
+    def import_stdlib(self, name):
+        if name not in STANDARD_LIBRARIES:
+            raise Exception(f"표준 라이브러리 '{name}'를 찾을 수 없습니다.")
+
+        namespace = StdNamespace(name, STANDARD_LIBRARIES[name])
+        self.current_vars()[name] = namespace
+        self.current_var_types()[name] = TYPE_ANY
+        return namespace
+
     def run(self, ast):
         return self.eval_node(ast)
 
@@ -274,6 +302,11 @@ class VM:
             raise BreakSignal()
         if isinstance(node, Continue):
             raise ContinueSignal()
+        if isinstance(node, Use):
+            result = None
+            for name in node.names:
+                result = self.import_stdlib(name)
+            return result
         if isinstance(node, ListDecl):
             items = [self.eval_expr(item) for item in node.items]
             return self.declare_var(node.name, TYPE_LIST, items)
@@ -487,6 +520,23 @@ class VM:
         return None
 
     def eval_method_call(self, target, method, args):
+        if isinstance(target, StdNamespace):
+            payload = {"기능": method, "인자": args}
+            try:
+                value = target.handler(payload)
+            except Exception:
+                raise
+            except BaseException as exc:
+                raise Exception(
+                    f"표준 라이브러리 '{target.name}' 호출 중 알 수 없는 오류가 발생했습니다."
+                ) from exc
+
+            if not self.is_hanco_value(value):
+                raise Exception(
+                    f"표준 라이브러리 '{target.name}'는 한코 자료형만 반환해야 합니다."
+                )
+            return value
+
         if method == METHOD_SLICE:
             if len(args) != 2:
                 raise Exception("자르기 함수는 시작과 끝 인자를 받아야 합니다.")

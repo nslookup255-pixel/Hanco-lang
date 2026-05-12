@@ -76,3 +76,7 @@ class Break:
 
 class Continue:
     pass
+
+class Use:
+    def __init__(self, names):
+        self.names = names

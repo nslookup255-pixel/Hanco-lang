@@ -62,6 +62,7 @@ class Parser:
         if tok.value=="반복": return self.loop_stmt()
         if tok.value=="멈춤": return self.break_stmt()
         if tok.value=="건너뛰기": return self.continue_stmt()
+        if tok.value=="사용": return self.use_stmt()
         if tok.value=="변수": return self.var_decl()
 
         # 🔥 출력 처리 추가
@@ -72,6 +73,20 @@ class Parser:
             return self.assign_stmt()
 
         return self.expr()
+
+    def use_stmt(self):
+        self.eat("사용")
+        self.eat("<")
+
+        names = []
+        while True:
+            names.append(self.eat().value)
+            if self.cur().value != ",":
+                break
+            self.eat(",")
+
+        self.eat(">")
+        return Use(names)
     
     def print_stmt(self):
         self.eat("출력")
@@ -81,7 +96,7 @@ class Parser:
         args = []
         self.push_expr_stops(">", ">>", ",")
         try:
-            if self.cur().value != ">":
+            if self.cur().value not in {">", ">>"}:
                 while True:
                     args.append(self.expr())
                     if self.cur().value != ",":
@@ -98,7 +113,7 @@ class Parser:
         args = []
         self.push_expr_stops(">", ">>", ",")
         try:
-            if self.cur().value != ">":
+            if self.cur().value not in {">", ">>"}:
                 while True:
                     args.append(self.expr())
                     if self.cur().value != ",":
@@ -130,7 +145,7 @@ class Parser:
         args = []
         self.push_expr_stops(">", ">>", ",")
         try:
-            if self.cur().value != ">":
+            if self.cur().value not in {">", ">>"}:
                 while True:
                     args.append(self.expr())
                     if self.cur().value != ",":
