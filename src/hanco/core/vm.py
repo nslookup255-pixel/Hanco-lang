@@ -287,10 +287,10 @@ class VM:
         if isinstance(node, Program):
             return self.eval_program(node)
         if isinstance(node, Function):
-            self.functions[node.n] = node
+            self.functions[node.name] = node
             return None
         if isinstance(node, Return):
-            value = self.eval_expr(node.v)
+            value = self.eval_expr(node.value)
             raise ReturnSignal(value)
         if isinstance(node, If):
             return self.eval_if(node)
@@ -323,13 +323,13 @@ class VM:
             self.assign_index(target, index, value)
             return value
         if isinstance(node, Call):
-            return self.eval_call(node.n, node.a)
+            return self.eval_call(node.name, node.args)
 
         return self.eval_expr(node)
 
     def eval_program(self, program):
         result = None
-        for statement in program.s:
+        for statement in program.statements:
             result = self.eval_node(statement)
         return result
 
@@ -391,13 +391,13 @@ class VM:
 
     def eval_expr(self, node):
         if isinstance(node, Literal):
-            return node.v
+            return node.value
         if isinstance(node, Var):
-            return self.resolve_var(node.n)
+            return self.resolve_var(node.name)
         if isinstance(node, Binary):
             return self.eval_binary(node)
         if isinstance(node, Call):
-            return self.eval_call(node.n, node.a)
+            return self.eval_call(node.name, node.args)
         if isinstance(node, Index):
             target = self.eval_expr(node.target)
             index = self.eval_expr(node.index)
@@ -410,9 +410,9 @@ class VM:
         raise Exception(f"지원하지 않는 AST 노드입니다. ({type(node).__name__})")
 
     def eval_binary(self, node):
-        left = self.eval_expr(node.l)
-        right = self.eval_expr(node.r)
-        op = node.o
+        left = self.eval_expr(node.left)
+        right = self.eval_expr(node.right)
+        op = node.op
 
         if op == "+" and (isinstance(left, str) or isinstance(right, str)):
             return self.stringify_value(left) + self.stringify_value(right)
@@ -499,20 +499,20 @@ class VM:
             raise Exception(f"정의하지 않은 함수 '{name}' 입니다.")
 
         func = self.functions[name]
-        if len(args) != len(func.p):
+        if len(args) != len(func.params):
             raise Exception(
                 f"함수 '{name}' 호출 인자 수가 맞지 않습니다. "
-                f"(필요: {len(func.p)}, 전달: {len(args)})"
+                f"(필요: {len(func.params)}, 전달: {len(args)})"
             )
 
         frame = {
-            "vars": dict(zip(func.p, args)),
-            "var_types": {param: TYPE_ANY for param in func.p},
+            "vars": dict(zip(func.params, args)),
+            "var_types": {param: TYPE_ANY for param in func.params},
             "name": name,
         }
         self.frames.append(frame)
         try:
-            self.eval_block(func.b)
+            self.eval_block(func.body)
         except ReturnSignal as signal:
             return signal.value
         finally:

@@ -22,20 +22,20 @@ class Compiler:
             main=[]
             funcs=[]
 
-            for s in node.s:
+            for s in node.statements:
                 if isinstance(s,Function): funcs.append(s)
                 else: main.append(s)
 
             self.emit("JMP","MAIN")
 
             for f in funcs:
-                self.funcs[f.n]=(len(self.code),f.p)
-                self.emit("FUNC",(f.n, list(f.p)))
+                self.funcs[f.name]=(len(self.code),f.params)
+                self.emit("FUNC",(f.name, list(f.params)))
 
-                for p in reversed(f.p):
+                for p in reversed(f.params):
                     self.emit("STORE",p)
 
-                for s in f.b:
+                for s in f.body:
                     self.compile(s)
 
                 self.emit("RET")
@@ -52,12 +52,12 @@ class Compiler:
             self.emit("DECLARE",(node.name,"목록"))
 
         elif isinstance(node,Call):
-            for a in node.a:
+            for a in node.args:
                 self.compile(a)
-            self.emit("CALL",(node.n, len(node.a)))
+            self.emit("CALL",(node.name, len(node.args)))
 
         elif isinstance(node,Return):
-            self.compile(node.v)
+            self.compile(node.value)
             self.emit("RET")
 
         elif isinstance(node, If):
@@ -174,15 +174,15 @@ class Compiler:
             self.loop_stack.pop()
 
         elif isinstance(node,Binary):
-            self.compile(node.l)
-            self.compile(node.r)
-            self.emit(node.o)
+            self.compile(node.left)
+            self.compile(node.right)
+            self.emit(node.op)
 
         elif isinstance(node,Literal):
-            self.emit("PUSH",node.v)
+            self.emit("PUSH",node.value)
 
         elif isinstance(node,Var):
-            self.emit("LOAD",node.n)
+            self.emit("LOAD",node.name)
 
         elif isinstance(node,Index):
             self.compile(node.target)

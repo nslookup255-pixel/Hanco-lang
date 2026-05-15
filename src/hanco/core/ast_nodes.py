@@ -1,26 +1,31 @@
 class Program:
-    def __init__(self, s): self.s = s
+    def __init__(self, statements): self.statements = statements
 
 class Function:
-    def __init__(self, n, p, b):
-        self.n=n; self.p=p; self.b=b
+    def __init__(self, name, params, body):
+        self.name = name
+        self.params = params
+        self.body = body
 
 class Call:
-    def __init__(self, n, a):
-        self.n=n; self.a=a
+    def __init__(self, name, args):
+        self.name = name
+        self.args = args
 
 class Return:
-    def __init__(self, v): self.v=v
+    def __init__(self, value): self.value = value
 
 class Binary:
-    def __init__(self,l,o,r):
-        self.l=l; self.o=o; self.r=r
+    def __init__(self, left, op, right):
+        self.left = left
+        self.op = op
+        self.right = right
 
 class Literal:
-    def __init__(self,v): self.v=v
+    def __init__(self, value): self.value = value
 
 class Var:
-    def __init__(self,n): self.n=n
+    def __init__(self, name): self.name = name
 
 class Index:
     def __init__(self, target, index):
@@ -35,23 +40,24 @@ class MethodCall:
 
 class If:
     def __init__(self, branches, else_branch):
-        self.branches = branches  # [(cond, body), ...]
+        self.branches = branches
         self.else_branch = else_branch
 
 class ListDecl:
-    def __init__(self,name,items):
-        self.name=name; self.items=items
+    def __init__(self, name, items):
+        self.name = name
+        self.items = items
 
 class VarDecl:
-    def __init__(self,type_name,name,value):
-        self.type_name=type_name
-        self.name=name
-        self.value=value
+    def __init__(self, type_name, name, value):
+        self.type_name = type_name
+        self.name = name
+        self.value = value
 
 class Assign:
-    def __init__(self,name,value):
-        self.name=name
-        self.value=value
+    def __init__(self, name, value):
+        self.name = name
+        self.value = value
 
 class IndexAssign:
     def __init__(self, target, index, value):

@@ -3,22 +3,23 @@ import ast
 from .ast_nodes import *
 
 class Parser:
-    def __init__(self,t):
-        self.t=t; self.p=0
+    def __init__(self, tokens):
+        self.tokens = tokens
+        self.pos = 0
         self.expr_stop_stack=[]
         self.var_types={"숫자","실수","문자열","참거짓","목록","자유"}
         self.type_aliases={"문자": "문자열", "-": "자유"}
 
     def cur(self):
-        return self.t[self.p] if self.p<len(self.t) else None
+        return self.tokens[self.pos] if self.pos < len(self.tokens) else None
 
     def peek(self, offset=1):
-        index = self.p + offset
-        return self.t[index] if index < len(self.t) else None
+        index = self.pos + offset
+        return self.tokens[index] if index < len(self.tokens) else None
 
     def skip_newlines(self):
         while self.cur() and self.cur().type == "NEWLINE":
-            self.p += 1
+            self.pos += 1
 
     def eat(self,v=None):
         tok=self.cur()
@@ -32,7 +33,7 @@ class Parser:
         if v and tok.value!=v:
             raise Exception(f"[{tok.line}번 줄] '{v}' 필요 (현재: {tok.value})")
 
-        self.p+=1
+        self.pos += 1
         return tok
 
     def push_expr_stops(self, *values):
@@ -229,27 +230,25 @@ class Parser:
         value=self.expr()
         return VarDecl(type_name,name,value)
 
-        raise Exception(f"[{self.cur().line}번 줄] 변수 문법 오류")
-
     def is_assignment_stmt(self):
         tok = self.cur()
         if not tok or tok.type != "IDENT":
             return False
 
-        i = self.p + 1
-        while i < len(self.t) and self.t[i].value == "[":
+        i = self.pos + 1
+        while i < len(self.tokens) and self.tokens[i].value == "[":
             depth = 1
             i += 1
-            while i < len(self.t) and depth > 0:
-                if self.t[i].value == "[":
+            while i < len(self.tokens) and depth > 0:
+                if self.tokens[i].value == "[":
                     depth += 1
-                elif self.t[i].value == "]":
+                elif self.tokens[i].value == "]":
                     depth -= 1
                 i += 1
             if depth > 0:
                 return False
 
-        return i < len(self.t) and self.t[i].value == "="
+        return i < len(self.tokens) and self.tokens[i].value == "="
 
     def assign_stmt(self):
         target = Var(self.eat().value)
@@ -264,7 +263,7 @@ class Parser:
         value=self.expr()
 
         if isinstance(target, Var):
-            return Assign(target.n, value)
+            return Assign(target.name, value)
         if isinstance(target, Index):
             return IndexAssign(target.target, target.index, value)
 
@@ -444,11 +443,11 @@ class Parser:
             if self.cur().value == "<":
                 if not isinstance(expr, Var):
                     break
-                call_start = self.p
+                call_start = self.pos
                 try:
-                    expr = Call(expr.n, self.parse_call_args())
+                    expr = Call(expr.name, self.parse_call_args())
                 except Exception:
-                    self.p = call_start
+                    self.pos = call_start
                     break
                 continue
 
