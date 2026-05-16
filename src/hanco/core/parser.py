@@ -26,10 +26,6 @@ class Parser:
         if not tok:
             raise Exception("예상치 못한 EOF")
 
-        if v == ">" and tok.value == ">>":
-            tok.value = ">"
-            return tok
-
         if v and tok.value != v:
             raise Exception(f"[{tok.line}번 줄] '{v}' 필요 (현재: {tok.value})")
 
@@ -93,9 +89,9 @@ class Parser:
         self.eat("<")
 
         args = []
-        self.push_expr_stops(">", ">>", ",")
+        self.push_expr_stops(">", ",")
         try:
-            if self.cur().value not in {">", ">>"}:
+            if self.cur().value != ">":
                 while True:
                     args.append(self.expr())
                     if self.cur().value != ",":
@@ -110,9 +106,9 @@ class Parser:
     def parse_call_args(self):
         self.eat("<")
         args = []
-        self.push_expr_stops(">", ">>", ",")
+        self.push_expr_stops(">", ",")
         try:
-            if self.cur().value not in {">", ">>"}:
+            if self.cur().value != ">":
                 while True:
                     args.append(self.expr())
                     if self.cur().value != ",":
@@ -133,7 +129,7 @@ class Parser:
             finally:
                 self.pop_expr_stops()
             self.eat("~")
-            self.push_expr_stops(">", ">>")
+            self.push_expr_stops(">")
             try:
                 end = self.expr()
             finally:
@@ -142,9 +138,9 @@ class Parser:
             return [start, end]
 
         args = []
-        self.push_expr_stops(">", ">>", ",")
+        self.push_expr_stops(">", ",")
         try:
-            if self.cur().value not in {">", ">>"}:
+            if self.cur().value != ">":
                 while True:
                     args.append(self.expr())
                     if self.cur().value != ",":
@@ -161,21 +157,21 @@ class Parser:
 
         body = []
         self.skip_newlines()
-        while self.cur() and self.cur().value != ">" and self.cur().value != "아니면":
+        while self.cur() and self.cur().value != "~>" and self.cur().value != "아니면":
             body.append(self.stmt())
             self.skip_newlines()
-        self.eat(">")
+        self.eat("~>")
         return body
 
     def parse_if_block(self):
         self.eat("<")
         body = []
         self.skip_newlines()
-        while self.cur() and self.cur().value != ">" and self.cur().value != "아니면":
+        while self.cur() and self.cur().value != "~>" and self.cur().value != "아니면":
             body.append(self.stmt())
             self.skip_newlines()
-        if self.cur() and self.cur().value == ">":
-            self.eat(">")
+        if self.cur() and self.cur().value == "~>":
+            self.eat("~>")
         return body
 
     def loop_stmt(self):
@@ -319,11 +315,7 @@ class Parser:
     def ret(self):
         line = self.cur().line
         self.eat("반환")
-        self.push_expr_stops(">")
-        try:
-            value = self.expr()
-        finally:
-            self.pop_expr_stops()
+        value = self.expr()
         return Return(value, line)
 
     def break_stmt(self):
@@ -368,7 +360,7 @@ class Parser:
         while (
             self.cur()
             and not self.is_expr_stop(self.cur().value)
-            and self.cur().value in ["<<", ">>", "<<=", ">>="]
+            and self.cur().value in ["<", ">", "<=", ">="]
         ):
             op_tok = self.eat()
             right = self.additive()

@@ -406,10 +406,10 @@ class VM:
         right = self.eval_expr(node.right)
         op = node.op
 
-        if op == "<<": return left < right
-        if op == ">>": return left > right
-        if op == "<<=": return left <= right
-        if op == ">>=": return left >= right
+        if op == "<": return left < right
+        if op == ">": return left > right
+        if op == "<=": return left <= right
+        if op == ">=": return left >= right
         if op == LOGIC_AND: return bool(left) and bool(right)
         if op == LOGIC_OR: return bool(left) or bool(right)
         if op == "==": return left == right
