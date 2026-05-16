@@ -89,6 +89,12 @@ class VM:
         self.global_var_types = {}
         self.functions = {}
         self.frames = []
+        self.current_line = None
+
+    def _raise(self, msg):
+        if self.current_line:
+            raise Exception(f"[{self.current_line}번 줄] {msg}")
+        raise Exception(msg)
 
     def format_value(self, value):
         if isinstance(value, list):
@@ -130,57 +136,43 @@ class VM:
     def ensure_type(self, expected_type, value, var_name):
         if expected_type == TYPE_ANY:
             return
-
         actual_type = self.type_name_of(value)
         if actual_type != expected_type:
-            raise Exception(
+            self._raise(
                 f"변수 '{var_name}'에는 {expected_type} 자료형만 저장할 수 있습니다. "
-                f"(현재 값 타입: {actual_type})"
+                f"(전달된 값의 자료형: {actual_type})"
             )
 
     def coerce_value(self, expected_type, value, var_name):
         if expected_type in {TYPE_ANY, None}:
             return value
-
         if self.type_name_of(value) == expected_type:
             return value
-
         if expected_type == TYPE_STRING:
             return str(value)
-
         if expected_type == TYPE_INT and isinstance(value, str):
             try:
                 return int(value.strip())
-            except ValueError as exc:
-                raise Exception(
-                    f"입력값을 숫자로 변환할 수 없습니다. (변수: {var_name}, 값: {value})"
-                ) from exc
-
+            except ValueError:
+                self._raise(f"입력값을 숫자로 변환할 수 없습니다. (변수: '{var_name}', 값: {value!r})")
         if expected_type == TYPE_FLOAT and isinstance(value, str):
             try:
                 return float(value.strip())
-            except ValueError as exc:
-                raise Exception(
-                    f"입력값을 실수로 변환할 수 없습니다. (변수: {var_name}, 값: {value})"
-                ) from exc
-
+            except ValueError:
+                self._raise(f"입력값을 실수로 변환할 수 없습니다. (변수: '{var_name}', 값: {value!r})")
         if expected_type == TYPE_BOOL and isinstance(value, str):
             normalized = value.strip().lower()
             if normalized in {BOOL_TRUE, "true", "1", "yes", "y"}:
                 return True
             if normalized in {BOOL_FALSE, "false", "0", "no", "n"}:
                 return False
-            raise Exception(
-                f"입력값을 참거짓으로 변환할 수 없습니다. (변수: {var_name}, 값: {value})"
-            )
-
+            self._raise(f"입력값을 참거짓으로 변환할 수 없습니다. (변수: '{var_name}', 값: {value!r})")
         self.ensure_type(expected_type, value, var_name)
         return value
 
     def convert_value(self, type_name, value):
         if type_name == TYPE_STRING:
             return self.stringify_value(value)
-
         if type_name == TYPE_INT:
             if isinstance(value, bool):
                 return int(value)
@@ -191,9 +183,8 @@ class VM:
             if isinstance(value, str):
                 try:
                     return int(value.strip())
-                except ValueError as exc:
-                    raise Exception(f"값을 숫자로 변환할 수 없습니다. (값: {value})") from exc
-
+                except ValueError:
+                    self._raise(f"값을 숫자로 변환할 수 없습니다. (값: {value!r})")
         if type_name == TYPE_FLOAT:
             if isinstance(value, bool):
                 return float(value)
@@ -202,9 +193,8 @@ class VM:
             if isinstance(value, str):
                 try:
                     return float(value.strip())
-                except ValueError as exc:
-                    raise Exception(f"값을 실수로 변환할 수 없습니다. (값: {value})") from exc
-
+                except ValueError:
+                    self._raise(f"값을 실수로 변환할 수 없습니다. (값: {value!r})")
         if type_name == TYPE_BOOL:
             if isinstance(value, bool):
                 return value
@@ -216,9 +206,8 @@ class VM:
                     return True
                 if normalized in {BOOL_FALSE, "false", "0", "no", "n", ""}:
                     return False
-                raise Exception(f"값을 참거짓으로 변환할 수 없습니다. (값: {value})")
-
-        raise Exception(f"지원하지 않는 자료형 변환입니다. ({type_name})")
+                self._raise(f"값을 참거짓으로 변환할 수 없습니다. (값: {value!r})")
+        self._raise(f"지원하지 않는 자료형 변환입니다. ({type_name})")
 
     def current_vars(self):
         if self.frames:
@@ -236,7 +225,7 @@ class VM:
                 return frame["vars"][name]
         if name in self.globals:
             return self.globals[name]
-        raise Exception(f"선언하지 않은 변수 '{name}'를 찾을 수 없습니다.")
+        self._raise(f"선언하지 않은 변수 '{name}'를 사용했습니다.")
 
     def resolve_var_type(self, name):
         for frame in reversed(self.frames):
@@ -254,15 +243,13 @@ class VM:
                 self.ensure_type(expected_type, value, name)
                 frame["vars"][name] = value
                 return value
-
         if name in self.globals:
             expected_type = self.global_var_types.get(name, TYPE_ANY)
             value = self.coerce_value(expected_type, value, name)
             self.ensure_type(expected_type, value, name)
             self.globals[name] = value
             return value
-
-        raise Exception(f"선언하지 않은 변수 '{name}'에 값을 대입할 수 없습니다.")
+        self._raise(f"선언하지 않은 변수 '{name}'에 값을 대입할 수 없습니다.")
 
     def declare_var(self, name, type_name, value):
         value = self.coerce_value(type_name, value, name)
@@ -273,8 +260,7 @@ class VM:
 
     def import_stdlib(self, name):
         if name not in STANDARD_LIBRARIES:
-            raise Exception(f"표준 라이브러리 '{name}'를 찾을 수 없습니다.")
-
+            self._raise(f"표준 라이브러리 '{name}'를 찾을 수 없습니다.")
         namespace = StdNamespace(name, STANDARD_LIBRARIES[name])
         self.current_vars()[name] = namespace
         self.current_var_types()[name] = TYPE_ANY
@@ -284,6 +270,9 @@ class VM:
         return self.eval_node(ast)
 
     def eval_node(self, node):
+        if hasattr(node, "line") and node.line:
+            self.current_line = node.line
+
         if isinstance(node, Program):
             return self.eval_program(node)
         if isinstance(node, Function):
@@ -361,7 +350,7 @@ class VM:
         end = self.eval_expr(node.end)
 
         if not isinstance(start, int) or not isinstance(end, int):
-            raise Exception("반복문 범위는 숫자여야 합니다.")
+            self._raise("반복문의 범위는 정수여야 합니다.")
 
         step = 1 if start <= end else -1
 
@@ -390,6 +379,9 @@ class VM:
         return result
 
     def eval_expr(self, node):
+        if hasattr(node, "line") and node.line:
+            self.current_line = node.line
+
         if isinstance(node, Literal):
             return node.value
         if isinstance(node, Var):
@@ -407,43 +399,45 @@ class VM:
             args = [self.eval_expr(arg) for arg in node.args]
             return self.eval_method_call(target, node.method, args)
 
-        raise Exception(f"지원하지 않는 AST 노드입니다. ({type(node).__name__})")
+        self._raise(f"지원하지 않는 AST 노드입니다. ({type(node).__name__})")
 
     def eval_binary(self, node):
         left = self.eval_expr(node.left)
         right = self.eval_expr(node.right)
         op = node.op
 
+        if op == "<<": return left < right
+        if op == ">>": return left > right
+        if op == "<<=": return left <= right
+        if op == ">>=": return left >= right
+        if op == LOGIC_AND: return bool(left) and bool(right)
+        if op == LOGIC_OR: return bool(left) or bool(right)
+        if op == "==": return left == right
+        if op == "!=": return left != right
+
         if op == "+" and (isinstance(left, str) or isinstance(right, str)):
             return self.stringify_value(left) + self.stringify_value(right)
-        if op == "<<":
-            return left < right
-        if op == ">>":
-            return left > right
-        if op == "<<=":
-            return left <= right
-        if op == ">>=":
-            return left >= right
-        if op == LOGIC_AND:
-            return bool(left) and bool(right)
-        if op == LOGIC_OR:
-            return bool(left) or bool(right)
-        if op == "+":
-            return left + right
-        if op == "-":
-            return left - right
-        if op == "*":
-            return left * right
-        if op == "/":
-            return left / right
-        if op == "%":
-            return left % right
-        if op == "==":
-            return left == right
-        if op == "!=":
-            return left != right
 
-        raise Exception(f"지원하지 않는 연산자입니다. ({op})")
+        if op in ("+", "-", "*", "/", "%"):
+            if not isinstance(left, (int, float)) or isinstance(left, bool):
+                self._raise(
+                    f"'{op}' 연산자는 숫자에만 사용할 수 있습니다. "
+                    f"(왼쪽 값의 자료형: {self.type_label_of(left)})"
+                )
+            if not isinstance(right, (int, float)) or isinstance(right, bool):
+                self._raise(
+                    f"'{op}' 연산자는 숫자에만 사용할 수 있습니다. "
+                    f"(오른쪽 값의 자료형: {self.type_label_of(right)})"
+                )
+            if op in ("/", "%") and right == 0:
+                self._raise("0으로 나눌 수 없습니다.")
+            if op == "+": return left + right
+            if op == "-": return left - right
+            if op == "*": return left * right
+            if op == "/": return left / right
+            if op == "%": return left % right
+
+        self._raise(f"지원하지 않는 연산자입니다. ({op})")
 
     def eval_call(self, name, arg_nodes):
         args = [self.eval_expr(arg) for arg in arg_nodes]
@@ -458,51 +452,54 @@ class VM:
 
         if name == BUILTIN_LENGTH:
             if len(args) != 1:
-                raise Exception("길이 함수는 인자를 1개만 받습니다.")
+                self._raise("길이 함수는 인자를 1개만 받습니다.")
             value = args[0]
             if not isinstance(value, (str, list)):
-                raise Exception("길이 함수는 문자열 또는 목록에만 사용할 수 있습니다.")
+                self._raise(
+                    f"길이 함수는 문자열 또는 목록에만 사용할 수 있습니다. "
+                    f"(전달된 값의 자료형: {self.type_label_of(value)})"
+                )
             return len(value)
 
         if name == BUILTIN_TYPE_OF:
             if len(args) != 1:
-                raise Exception("자료형 함수는 인자를 1개만 받습니다.")
+                self._raise("자료형 함수는 인자를 1개만 받습니다.")
             return self.type_label_of(args[0])
 
         if name == BUILTIN_EXISTS:
             if len(args) != 1:
-                raise Exception("있는가 함수는 인자를 1개만 받습니다.")
+                self._raise("있는가 함수는 인자를 1개만 받습니다.")
             return args[0] is not None
 
         if name == BUILTIN_MISSING:
             if len(args) != 1:
-                raise Exception("없는가 함수는 인자를 1개만 받습니다.")
+                self._raise("없는가 함수는 인자를 1개만 받습니다.")
             return args[0] is None
 
         if name == BUILTIN_IS_NUMBER:
             if len(args) != 1:
-                raise Exception("숫자인가 함수는 인자를 1개만 받습니다.")
+                self._raise("숫자인가 함수는 인자를 1개만 받습니다.")
             return isinstance(args[0], (int, float)) and not isinstance(args[0], bool)
 
         if name == BUILTIN_IS_INTEGER:
             if len(args) != 1:
-                raise Exception("정수인가 함수는 인자를 1개만 받습니다.")
+                self._raise("정수인가 함수는 인자를 1개만 받습니다.")
             return isinstance(args[0], int) and not isinstance(args[0], bool)
 
         target_type = TYPE_ALIASES.get(name, name)
         if target_type in {TYPE_STRING, TYPE_INT, TYPE_FLOAT, TYPE_BOOL}:
             if len(args) != 1:
-                raise Exception(f"자료형 변환 함수 '{name}'는 인자를 1개만 받습니다.")
+                self._raise(f"자료형 변환 함수 '{name}'는 인자를 1개만 받습니다.")
             return self.convert_value(target_type, args[0])
 
         if name not in self.functions:
-            raise Exception(f"정의하지 않은 함수 '{name}' 입니다.")
+            self._raise(f"정의되지 않은 함수 '{name}'를 호출했습니다.")
 
         func = self.functions[name]
         if len(args) != len(func.params):
-            raise Exception(
-                f"함수 '{name}' 호출 인자 수가 맞지 않습니다. "
-                f"(필요: {len(func.params)}, 전달: {len(args)})"
+            self._raise(
+                f"함수 '{name}' 호출 시 인자 수가 맞지 않습니다. "
+                f"(필요: {len(func.params)}개, 전달: {len(args)}개)"
             )
 
         frame = {
@@ -524,92 +521,105 @@ class VM:
             payload = {"기능": method, "인자": args}
             try:
                 value = target.handler(payload)
-            except Exception:
+            except Exception as exc:
+                msg = str(exc)
+                if self.current_line and not msg.startswith("["):
+                    raise Exception(f"[{self.current_line}번 줄] {msg}") from None
                 raise
             except BaseException as exc:
-                raise Exception(
-                    f"표준 라이브러리 '{target.name}' 호출 중 알 수 없는 오류가 발생했습니다."
-                ) from exc
+                self._raise(f"표준 라이브러리 '{target.name}' 호출 중 알 수 없는 오류가 발생했습니다.")
 
             if not self.is_hanco_value(value):
-                raise Exception(
-                    f"표준 라이브러리 '{target.name}'는 한코 자료형만 반환해야 합니다."
-                )
+                self._raise(f"표준 라이브러리 '{target.name}'는 한코 자료형만 반환해야 합니다.")
             return value
 
         if method == METHOD_SLICE:
             if len(args) != 2:
-                raise Exception("자르기 함수는 시작과 끝 인자를 받아야 합니다.")
+                self._raise("자르기는 시작과 끝 인자 2개를 받아야 합니다.")
             start, end = args
             if not isinstance(start, int) or not isinstance(end, int):
-                raise Exception("자르기 범위는 숫자여야 합니다.")
+                self._raise("자르기의 범위는 정수여야 합니다.")
             if isinstance(target, (list, str)):
                 return target[start:end]
-            raise Exception("자르기 함수는 문자열 또는 목록에만 사용할 수 있습니다.")
+            self._raise(
+                f"자르기는 문자열 또는 목록에만 사용할 수 있습니다. "
+                f"(자료형: {self.type_label_of(target)})"
+            )
 
         if isinstance(target, list):
             method = LIST_METHOD_ALIASES.get(method, method)
 
             if method == METHOD_APPEND:
                 if len(args) != 1:
-                    raise Exception("목록 추가 함수는 인자를 1개만 받습니다.")
+                    self._raise("목록:추가는 인자를 1개만 받습니다.")
                 target.append(args[0])
                 return target
 
             if method == METHOD_REMOVE:
                 if len(args) == 0:
                     if not target:
-                        raise Exception("빈 목록에서는 제거할 수 없습니다.")
+                        self._raise("빈 목록에서는 제거할 수 없습니다.")
                     return target.pop()
                 if len(args) == 1:
                     index = args[0]
                     if not isinstance(index, int):
-                        raise Exception("목록 제거 인덱스는 숫자여야 합니다.")
+                        self._raise("목록:제거의 인덱스는 정수여야 합니다.")
                     if index < 0 or index >= len(target):
-                        raise Exception(f"목록 인덱스 범위를 벗어났습니다. (인덱스: {index})")
+                        self._raise(
+                            f"목록 인덱스 범위를 벗어났습니다. "
+                            f"(인덱스: {index}, 목록 크기: {len(target)})"
+                        )
                     return target.pop(index)
-                raise Exception("목록 제거 함수는 인자를 0개 또는 1개만 받습니다.")
+                self._raise("목록:제거는 인자를 0개 또는 1개만 받습니다.")
 
-            raise Exception(f"지원하지 않는 목록 함수입니다. ({method})")
+            self._raise(f"목록에 '{method}' 함수가 없습니다.")
 
         if isinstance(target, str):
             method = STRING_METHOD_ALIASES.get(method, method)
 
             if method == METHOD_CONTAINS:
                 if len(args) != 1:
-                    raise Exception("문자열 포함 함수는 인자를 1개만 받습니다.")
+                    self._raise("문자열:포함은 인자를 1개만 받습니다.")
                 return self.stringify_value(args[0]) in target
 
             if method == METHOD_STRIP:
                 if args:
-                    raise Exception("문자열 공백제거 함수는 인자를 받지 않습니다.")
+                    self._raise("문자열:제거앞뒤공백은 인자를 받지 않습니다.")
                 return target.strip()
 
             if method == METHOD_SPLIT:
                 if len(args) != 1:
-                    raise Exception("문자열 나누기 함수는 인자를 1개만 받습니다.")
+                    self._raise("문자열:나누기는 인자를 1개만 받습니다.")
                 return target.split(self.stringify_value(args[0]))
 
-            raise Exception(f"지원하지 않는 문자열 함수입니다. ({method})")
+            self._raise(f"문자열에 '{method}' 함수가 없습니다.")
 
-        raise Exception(f"지원하지 않는 메서드 호출입니다. ({method})")
+        self._raise(f"자료형 '{self.type_label_of(target)}'에는 '{method}' 함수가 없습니다.")
 
     def read_index(self, target, index):
-        if not isinstance(target, list):
-            raise Exception("목록이 아닌 값에는 인덱싱을 사용할 수 없습니다.")
+        if not isinstance(target, (list, str)):
+            self._raise(
+                f"인덱싱은 목록 또는 문자열에만 사용할 수 있습니다. "
+                f"(자료형: {self.type_label_of(target)})"
+            )
         if not isinstance(index, int):
-            raise Exception("목록 인덱스는 숫자여야 합니다.")
+            self._raise(f"인덱스는 정수여야 합니다. (전달된 자료형: {self.type_label_of(index)})")
         if index < 0 or index >= len(target):
-            raise Exception(f"목록 인덱스 범위를 벗어났습니다. (인덱스: {index})")
+            self._raise(f"인덱스 범위를 벗어났습니다. (인덱스: {index}, 크기: {len(target)})")
         return target[index]
 
     def assign_index(self, target, index, value):
+        if isinstance(target, str):
+            self._raise("문자열은 인덱스로 값을 바꿀 수 없습니다.")
         if not isinstance(target, list):
-            raise Exception("목록이 아닌 값에는 인덱스 대입을 사용할 수 없습니다.")
+            self._raise(
+                f"인덱스 대입은 목록에만 사용할 수 있습니다. "
+                f"(자료형: {self.type_label_of(target)})"
+            )
         if not isinstance(index, int):
-            raise Exception("목록 인덱스는 숫자여야 합니다.")
+            self._raise(f"인덱스는 정수여야 합니다. (전달된 자료형: {self.type_label_of(index)})")
         if index < 0 or index >= len(target):
-            raise Exception(f"목록 인덱스 범위를 벗어났습니다. (인덱스: {index})")
+            self._raise(f"인덱스 범위를 벗어났습니다. (인덱스: {index}, 크기: {len(target)})")
         target[index] = value
 
     def truthy(self, value):
