@@ -418,6 +418,11 @@ class VM:
         if op == "+" and (isinstance(left, str) or isinstance(right, str)):
             return self.stringify_value(left) + self.stringify_value(right)
 
+        if op == "*" and isinstance(left, str) and isinstance(right, int) and not isinstance(right, bool):
+            return left * right
+        if op == "*" and isinstance(right, str) and isinstance(left, int) and not isinstance(left, bool):
+            return right * left
+
         if op in ("+", "-", "*", "/", "%"):
             if not isinstance(left, (int, float)) or isinstance(left, bool):
                 self._raise(
