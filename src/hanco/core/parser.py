@@ -61,7 +61,6 @@ class Parser:
         if tok.value == "건너뛰기": return self.continue_stmt()
         if tok.value == "사용": return self.use_stmt()
         if tok.value == "변수": return self.var_decl()
-        if tok.value == "출력": return self.print_stmt()
 
         if self.is_assignment_stmt():
             return self.assign_stmt()
@@ -71,7 +70,7 @@ class Parser:
     def use_stmt(self):
         line = self.cur().line
         self.eat("사용")
-        self.eat("<")
+        self.eat("(")
 
         names = []
         while True:
@@ -80,35 +79,15 @@ class Parser:
                 break
             self.eat(",")
 
-        self.eat(">")
+        self.eat(")")
         return Use(names, line)
 
-    def print_stmt(self):
-        line = self.cur().line
-        self.eat("출력")
-        self.eat("<")
-
-        args = []
-        self.push_expr_stops(">", ",")
-        try:
-            if self.cur().value != ">":
-                while True:
-                    args.append(self.expr())
-                    if self.cur().value != ",":
-                        break
-                    self.eat(",")
-        finally:
-            self.pop_expr_stops()
-        self.eat(">")
-
-        return Call("출력", args, line)
-
     def parse_call_args(self):
-        self.eat("<")
+        self.eat("(")
         args = []
-        self.push_expr_stops(">", ",")
+        self.push_expr_stops(")", ",")
         try:
-            if self.cur().value != ">":
+            if self.cur().value != ")":
                 while True:
                     args.append(self.expr())
                     if self.cur().value != ",":
@@ -116,11 +95,11 @@ class Parser:
                     self.eat(",")
         finally:
             self.pop_expr_stops()
-        self.eat(">")
+        self.eat(")")
         return args
 
     def parse_method_args(self, method):
-        self.eat("<")
+        self.eat("(")
 
         if method == "자르기":
             self.push_expr_stops("~")
@@ -129,18 +108,18 @@ class Parser:
             finally:
                 self.pop_expr_stops()
             self.eat("~")
-            self.push_expr_stops(">")
+            self.push_expr_stops(")")
             try:
                 end = self.expr()
             finally:
                 self.pop_expr_stops()
-            self.eat(">")
+            self.eat(")")
             return [start, end]
 
         args = []
-        self.push_expr_stops(">", ",")
+        self.push_expr_stops(")", ",")
         try:
-            if self.cur().value != ">":
+            if self.cur().value != ")":
                 while True:
                     args.append(self.expr())
                     if self.cur().value != ",":
@@ -148,7 +127,7 @@ class Parser:
                     self.eat(",")
         finally:
             self.pop_expr_stops()
-        self.eat(">")
+        self.eat(")")
         return args
 
     def parse_block(self):
@@ -418,16 +397,11 @@ class Parser:
         else:
             raise Exception(f"[{tok.line}번 줄] 식 오류")
 
-        while self.cur() and self.cur().value in ["<", "[", ":"]:
-            if self.cur().value == "<":
+        while self.cur() and self.cur().value in ["(", "[", ":"]:
+            if self.cur().value == "(":
                 if not isinstance(expr, Var):
                     break
-                call_start = self.pos
-                try:
-                    expr = Call(expr.name, self.parse_call_args(), tok.line)
-                except Exception:
-                    self.pos = call_start
-                    break
+                expr = Call(expr.name, self.parse_call_args(), tok.line)
                 continue
 
             if self.cur().value == "[":
